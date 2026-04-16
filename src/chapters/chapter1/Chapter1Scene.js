@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { chapter1Questions } from './questions.js';
-import { addScore, getState, markAnswered, setChapter, resetState } from '../../core/GameState.js';
+import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const SHIP_SPEED = 400;
@@ -21,7 +22,6 @@ export class Chapter1Scene extends Phaser.Scene {
 
   /* ────────────────── INIT ────────────────── */
   init() {
-    resetState();
     setChapter(1);
     this.qIndex = 0;
     this.localScore = 0;
@@ -112,6 +112,8 @@ export class Chapter1Scene extends Phaser.Scene {
       .image(width / 2, height - 60, 'player')
       .setDisplaySize(56, 56)
       .setDepth(5);
+
+    addEscButton(this);
 
     // ── input
     this.cursors = this.input.keyboard.createCursorKeys();

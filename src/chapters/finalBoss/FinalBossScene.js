@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { finalBossQuestions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const CORRECT_PTS = 2;
@@ -121,7 +122,7 @@ export class FinalBossScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-    // ── Show rules before boss intro
+    addEscButton(this);
     showRules(this, {
       title: 'FINAL BOSS — The Master Algorithm',
       mechanics: [
@@ -455,12 +456,12 @@ export class FinalBossScene extends Phaser.Scene {
       fontFamily: 'Arial', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(31);
 
-    this.add.text(width / 2, height / 2 + 140, 'Press ENTER to play again from Chapter 1', {
+    this.add.text(width / 2, height / 2 + 140, 'Press ENTER to return to Home', {
       fontSize: '16px', color: '#888', fontFamily: 'Arial',
     }).setOrigin(0.5).setDepth(31);
 
     this.input.keyboard.once('keydown-ENTER', () => {
-      this.scene.start('BootScene');
+      this.scene.start('HomeScene');
     });
   }
 }

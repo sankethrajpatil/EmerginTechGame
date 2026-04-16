@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { chapter6Questions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const CORRECT_PTS = 1;
@@ -113,7 +114,7 @@ export class Chapter6Scene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-    // ── show rules before starting
+    addEscButton(this);
     showRules(this, {
       title: 'Chapter 6 — Data Claw',
       mechanics: [

@@ -18,7 +18,7 @@ export class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.add
-      .text(cx, cy + 30, 'Loading Chapter 1…', {
+      .text(cx, cy + 30, 'Loading…', {
         fontSize: '18px',
         color: '#888',
         fontFamily: 'Arial',
@@ -26,7 +26,7 @@ export class BootScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     this.time.delayedCall(1500, () => {
-      this.scene.start('Chapter1Scene');
+      this.scene.start('HomeScene');
     });
   }
 }

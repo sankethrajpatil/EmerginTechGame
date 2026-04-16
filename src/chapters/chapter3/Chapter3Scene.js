@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import { chapter3Questions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const GRAVITY = 600;
-const JUMP_VELOCITY = -420;
+const JUMP_VELOCITY = -480;
 const MOVE_SPEED = 300;
 const PLAYER_SIZE = 48;
 const PLAT_W = 160;
@@ -124,16 +125,16 @@ export class Chapter3Scene extends Phaser.Scene {
     // ── input
     this.cursors = this.input.keyboard.createCursorKeys();
 
-    // ── show rules before starting
+    addEscButton(this);
     showRules(this, {
       title: 'Chapter 3 — Platform Jumper',
       mechanics: [
-        'Land on the platform with the correct answer!',
-        'Your character auto-bounces — steer left/right.',
-        'Wrong platforms break beneath you.',
+        'Your character auto-bounces upward — steer to land on the correct platform!',
+        '4 answer platforms appear in a row above you.',
+        'Wrong platforms break and you fall through.',
       ],
       controls: [
-        '← →  Steer left / right (wraps around)',
+        '← →  Steer left / right (wraps around edges)',
       ],
       scoring: [
         'Correct landing: +1 point + boost',
@@ -217,12 +218,13 @@ export class Chapter3Scene extends Phaser.Scene {
     this.questionText.setText(`Q${this.qIndex + 1}: ${q.question}`);
 
     const { width } = this.scale;
-    // place platforms above the player's current position
-    const baseY = this.player.y - 140;
+    // place platforms in a horizontal row at the same reachable height
+    const baseY = this.player.y - 120;
+    const sectionW = width / NUM_OPTIONS;
 
     for (let i = 0; i < NUM_OPTIONS; i++) {
-      const x = Phaser.Math.Between(PLAT_W / 2 + 10, width - PLAT_W / 2 - 10);
-      const y = baseY - i * 90;
+      const x = sectionW * i + sectionW / 2;
+      const y = baseY + Phaser.Math.Between(-10, 10);
       const container = this.add.container(x, y).setDepth(3);
 
       const sprite = this.add

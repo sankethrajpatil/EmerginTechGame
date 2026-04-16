@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './core/BootScene.js';
+import { HomeScene } from './core/HomeScene.js';
 import { Chapter1Scene } from './chapters/chapter1/Chapter1Scene.js';
 import { Chapter2Scene } from './chapters/chapter2/Chapter2Scene.js';
 import { Chapter3Scene } from './chapters/chapter3/Chapter3Scene.js';
@@ -15,7 +16,7 @@ const config = {
   height: 640,
   parent: 'game-container',
   backgroundColor: '#1a1a2e',
-  scene: [BootScene, Chapter1Scene, Chapter2Scene, Chapter3Scene, Chapter4Scene, Chapter5Scene, Chapter6Scene, Chapter7Scene, FinalBossScene],
+  scene: [BootScene, HomeScene, Chapter1Scene, Chapter2Scene, Chapter3Scene, Chapter4Scene, Chapter5Scene, Chapter6Scene, Chapter7Scene, FinalBossScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

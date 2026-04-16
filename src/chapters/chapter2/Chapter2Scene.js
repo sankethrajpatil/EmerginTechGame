@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { chapter2Questions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const BASKET_SPEED = 420;
@@ -109,6 +110,8 @@ export class Chapter2Scene extends Phaser.Scene {
       .image(width / 2, height - 40, 'basket')
       .setDisplaySize(120, 60)
       .setDepth(5);
+
+    addEscButton(this);
 
     // ── input
     this.cursors = this.input.keyboard.createCursorKeys();

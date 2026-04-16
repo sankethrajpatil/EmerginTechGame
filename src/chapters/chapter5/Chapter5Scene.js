@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { chapter5Questions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const CORRECT_PTS = 1;
@@ -149,6 +150,8 @@ export class Chapter5Scene extends Phaser.Scene {
         isUp: false, optionIndex: -1,
       });
     }
+
+    addEscButton(this);
 
     // ── show rules before starting
     showRules(this, {

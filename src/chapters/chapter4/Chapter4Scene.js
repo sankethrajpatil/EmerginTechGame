@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { chapter4Questions } from './questions.js';
 import { addScore, getState, markAnswered, setChapter } from '../../core/GameState.js';
 import { showRules } from '../../ui/RulesOverlay.js';
+import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
 const TILE = 64;
@@ -161,6 +162,8 @@ export class Chapter4Scene extends Phaser.Scene {
 
     // ── input
     this.cursors = this.input.keyboard.createCursorKeys();
+
+    addEscButton(this);
 
     // show rules before starting
     showRules(this, {
