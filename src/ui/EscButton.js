@@ -1,19 +1,20 @@
 /**
  * Adds an ESC button (top-left) + keyboard listener to any scene.
  * Pressing ESC or clicking the button transitions to HomeScene.
+ *
+ * Uses individual objects (not a container) so setScrollFactor(0)
+ * keeps the hit-area aligned with the visual even when the camera scrolls.
  */
 export function addEscButton(scene) {
-  const btn = scene.add.container(50, 28).setDepth(99).setScrollFactor(0);
+  const bg = scene.add.rectangle(50, 28, 64, 26, 0x000000, 0.5)
+    .setStrokeStyle(1, 0x778da9, 0.6)
+    .setDepth(99)
+    .setScrollFactor(0)
+    .setInteractive({ useHandCursor: true });
 
-  const bg = scene.add.rectangle(0, 0, 64, 26, 0x000000, 0.5)
-    .setStrokeStyle(1, 0x778da9, 0.6);
-  const label = scene.add.text(0, 0, '⬅ ESC', {
+  const label = scene.add.text(50, 28, '⬅ ESC', {
     fontSize: '11px', color: '#778da9', fontFamily: 'Arial', fontStyle: 'bold',
-  }).setOrigin(0.5);
-
-  btn.add([bg, label]);
-
-  bg.setInteractive({ useHandCursor: true });
+  }).setOrigin(0.5).setDepth(99).setScrollFactor(0);
 
   bg.on('pointerover', () => {
     bg.setFillStyle(0x1a1a2e, 0.8);
@@ -33,5 +34,5 @@ export function addEscButton(scene) {
     scene.scene.start('HomeScene');
   });
 
-  return btn;
+  return bg;
 }

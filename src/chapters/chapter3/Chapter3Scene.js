@@ -5,17 +5,17 @@ import { showRules } from '../../ui/RulesOverlay.js';
 import { addEscButton } from '../../ui/EscButton.js';
 
 /* ─── constants ─────────────────────────────────────────── */
-const GRAVITY = 600;
-const JUMP_VELOCITY = -480;
+const FALL_SPEED = 80;           // slow descent speed
 const MOVE_SPEED = 300;
 const PLAYER_SIZE = 48;
-const PLAT_W = 160;
+const PLAT_W = 180;
 const PLAT_H = 32;
 const NUM_OPTIONS = 4;
 const CORRECT_PTS = 1;
 const WRONG_PTS = -3;
 const PLAT_COLORS = ['EE6352', '59CD90', '3FA7D6', 'FAC748'];
 const OPTION_LETTERS = ['A', 'B', 'C', 'D'];
+const READ_TIME = 3000;          // ms to read question before drop starts
 
 export class Chapter3Scene extends Phaser.Scene {
   constructor() {
@@ -28,11 +28,10 @@ export class Chapter3Scene extends Phaser.Scene {
     this.qIndex = 0;
     this.localScore = 0;
     this.platforms = [];
-    this.playerVY = 0;
     this.gameOver = false;
     this.answered = false;
     this.rulesShown = false;
-    this.cameraY = 0;
+    this.dropping = false;    // true once read-time expires and player falls
     this.feedbackTimer = null;
   }
 
@@ -54,7 +53,7 @@ export class Chapter3Scene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // ── gradient-style background
+    // ── starfield background
     this.bgTiles = [];
     for (let i = 0; i < 100; i++) {
       const s = this.add.circle(
@@ -67,30 +66,24 @@ export class Chapter3Scene extends Phaser.Scene {
       this.bgTiles.push(s);
     }
 
-    // ── starting platform (floor)
-    this.floor = this.add
-      .rectangle(width / 2, height - 16, width, 32, 0x444466)
-      .setDepth(2);
-
-    // ── player
+    // ── player (starts hidden — placed by spawnQuestion)
     this.player = this.add
-      .image(width / 2, height - 60, 'jumper')
+      .image(width / 2, -50, 'jumper')
       .setDisplaySize(PLAYER_SIZE, PLAYER_SIZE)
-      .setDepth(5);
-    this.playerVY = JUMP_VELOCITY; // initial bounce
+      .setDepth(5)
+      .setVisible(false);
 
-    // ── HUD (fixed to camera via setScrollFactor)
+    // ── HUD
     this.scoreText = this.add
       .text(16, 16, `Score: ${getState().score}`, {
         fontSize: '20px',
         color: '#3FA7D6',
         fontFamily: 'Arial',
       })
-      .setDepth(10)
-      .setScrollFactor(0);
+      .setDepth(10);
 
     this.questionText = this.add
-      .text(width / 2, 40, '', {
+      .text(width / 2, 50, '', {
         fontSize: '16px',
         color: '#ffffff',
         fontFamily: 'Arial',
@@ -98,8 +91,18 @@ export class Chapter3Scene extends Phaser.Scene {
         align: 'center',
       })
       .setOrigin(0.5, 0)
+      .setDepth(10);
+
+    this.readHint = this.add
+      .text(width / 2, height / 2 - 30, '', {
+        fontSize: '22px',
+        color: '#FAC748',
+        fontFamily: 'Arial',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5)
       .setDepth(10)
-      .setScrollFactor(0);
+      .setVisible(false);
 
     this.feedbackText = this.add
       .text(width / 2, height / 2, '', {
@@ -109,7 +112,6 @@ export class Chapter3Scene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(20)
-      .setScrollFactor(0)
       .setVisible(false);
 
     this.chapterLabel = this.add
@@ -119,8 +121,7 @@ export class Chapter3Scene extends Phaser.Scene {
         fontFamily: 'Arial',
       })
       .setOrigin(1, 0)
-      .setDepth(10)
-      .setScrollFactor(0);
+      .setDepth(10);
 
     // ── input
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -129,52 +130,44 @@ export class Chapter3Scene extends Phaser.Scene {
     showRules(this, {
       title: 'Chapter 3 — Platform Jumper',
       mechanics: [
-        'Your character auto-bounces upward — steer to land on the correct platform!',
-        '4 answer platforms appear in a row above you.',
-        'Wrong platforms break and you fall through.',
+        'Read the question, then your character floats down from the top.',
+        'Steer left/right to land on the correct answer platform!',
+        'Wrong platforms break beneath you.',
       ],
       controls: [
-        '← →  Steer left / right (wraps around edges)',
+        '← →  Steer left / right',
       ],
       scoring: [
-        'Correct landing: +1 point + boost',
+        'Correct landing: +1 point',
         'Wrong landing: -3 points + platform breaks',
       ],
     }, () => {
       this.rulesShown = true;
-      this.spawnPlatforms();
+      this.spawnQuestion();
     });
   }
 
   /* ────────────────── UPDATE ─────────────── */
   update(_time, delta) {
-    if (this.gameOver || !this.rulesShown) return;
+    if (this.gameOver || !this.rulesShown || !this.dropping) return;
 
     const { width, height } = this.scale;
     const dt = delta / 1000;
 
-    // ── horizontal movement with screen wrap
+    // ── horizontal movement
     if (this.cursors.left.isDown) {
       this.player.x -= MOVE_SPEED * dt;
     } else if (this.cursors.right.isDown) {
       this.player.x += MOVE_SPEED * dt;
     }
-    // wrap around
-    if (this.player.x < -PLAYER_SIZE / 2) this.player.x = width + PLAYER_SIZE / 2;
-    if (this.player.x > width + PLAYER_SIZE / 2) this.player.x = -PLAYER_SIZE / 2;
+    // clamp to screen
+    this.player.x = Phaser.Math.Clamp(this.player.x, PLAYER_SIZE / 2, width - PLAYER_SIZE / 2);
 
-    // ── gravity
-    this.playerVY += GRAVITY * dt;
-    this.player.y += this.playerVY * dt;
+    // ── slow fall
+    this.player.y += FALL_SPEED * dt;
 
-    // ── floor bounce (only at start / after fall reset)
-    if (this.player.y >= height - 44 && this.playerVY > 0) {
-      this.player.y = height - 44;
-      this.playerVY = JUMP_VELOCITY;
-    }
-
-    // ── platform collision (only when falling)
-    if (this.playerVY > 0 && !this.answered) {
+    // ── platform collision
+    if (!this.answered) {
       for (let i = 0; i < this.platforms.length; i++) {
         const p = this.platforms[i];
         if (this.landTest(this.player, p.container)) {
@@ -184,22 +177,16 @@ export class Chapter3Scene extends Phaser.Scene {
       }
     }
 
-    // ── camera follow (smooth upward scroll)
-    const targetCamY = this.player.y - height * 0.4;
-    if (targetCamY < this.cameras.main.scrollY) {
-      this.cameras.main.scrollY = targetCamY;
-    }
-
-    // ── fell too far below camera → missed
-    if (this.player.y > this.cameras.main.scrollY + height + 80 && !this.answered) {
+    // ── fell past all platforms
+    if (this.player.y > height + 40 && !this.answered) {
       this.handleFall();
     }
 
     // ── parallax stars
     for (const s of this.bgTiles) {
-      s.y += 8 * dt;
-      if (s.y > this.cameras.main.scrollY + height + 10) {
-        s.y = this.cameras.main.scrollY - 10;
+      s.y += 12 * dt;
+      if (s.y > height + 10) {
+        s.y = -10;
         s.x = Phaser.Math.Between(0, width);
       }
     }
@@ -207,25 +194,25 @@ export class Chapter3Scene extends Phaser.Scene {
 
   /* ─── GAME LOGIC ─────────────────────────── */
 
-  spawnPlatforms() {
+  spawnQuestion() {
     if (this.qIndex >= chapter3Questions.length) {
       this.showEndScreen();
       return;
     }
 
     this.answered = false;
+    this.dropping = false;
     const q = chapter3Questions[this.qIndex];
     this.questionText.setText(`Q${this.qIndex + 1}: ${q.question}`);
 
-    const { width } = this.scale;
-    // place platforms in a horizontal row at the same reachable height
-    const baseY = this.player.y - 120;
+    // ── show platforms immediately so player can read options
+    const { width, height } = this.scale;
+    const platY = height - 100;
     const sectionW = width / NUM_OPTIONS;
 
     for (let i = 0; i < NUM_OPTIONS; i++) {
       const x = sectionW * i + sectionW / 2;
-      const y = baseY + Phaser.Math.Between(-10, 10);
-      const container = this.add.container(x, y).setDepth(3);
+      const container = this.add.container(x, platY).setDepth(3);
 
       const sprite = this.add
         .image(0, 0, `plat${i}`)
@@ -244,8 +231,21 @@ export class Chapter3Scene extends Phaser.Scene {
         .setOrigin(0.5, 1);
 
       container.add([sprite, label]);
+      container.setAlpha(0);
+      this.tweens.add({ targets: container, alpha: 1, duration: 400 });
       this.platforms.push({ container, optionIndex: i });
     }
+
+    // ── countdown hint while player reads
+    this.readHint.setVisible(true).setText('Read the question...');
+    this.player.setVisible(false);
+
+    this.time.delayedCall(READ_TIME, () => {
+      this.readHint.setVisible(false);
+      // place player at top-center, start falling
+      this.player.setPosition(width / 2, 90).setVisible(true);
+      this.dropping = true;
+    });
   }
 
   landTest(player, container) {
@@ -270,33 +270,28 @@ export class Chapter3Scene extends Phaser.Scene {
       addScore(CORRECT_PTS);
       this.showFeedback('✓  Correct! +1', '#00ff88');
 
-      // bounce the player up from this platform
       this.player.y = landed.container.y - PLAT_H / 2 - PLAYER_SIZE / 2;
-      this.playerVY = JUMP_VELOCITY * 1.3; // extra boost
-
+      this.dropping = false;
       this.answered = true;
       markAnswered(q.id);
       this.clearPlatforms();
       this.updateScoreDisplay();
       this.qIndex++;
-      this.time.delayedCall(1200, () => this.spawnPlatforms());
+      this.time.delayedCall(1200, () => this.spawnQuestion());
     } else {
       this.localScore += WRONG_PTS;
       addScore(WRONG_PTS);
       this.showFeedback('✗  Wrong! -3', '#e94560');
 
-      // break the platform — tween it away
+      // break the platform
       this.tweens.add({
         targets: landed.container,
-        alpha: 0,
-        y: landed.container.y + 60,
+        alpha: 0, y: landed.container.y + 60,
         duration: 300,
         onComplete: () => landed.container.destroy(),
       });
       this.platforms.splice(platIndex, 1);
       this.updateScoreDisplay();
-
-      // player falls through — don't mark answered; let them try remaining platforms
     }
   }
 
@@ -305,18 +300,14 @@ export class Chapter3Scene extends Phaser.Scene {
     this.localScore += WRONG_PTS;
     addScore(WRONG_PTS);
     markAnswered(q.id);
-    this.showFeedback('✗  Fell! -3', '#e94560');
+    this.showFeedback('✗  Missed! -3', '#e94560');
     this.answered = true;
+    this.dropping = false;
     this.clearPlatforms();
     this.updateScoreDisplay();
 
-    // reset player position to a ground level relative to camera
-    const { height } = this.scale;
-    this.player.y = this.cameras.main.scrollY + height - 60;
-    this.playerVY = JUMP_VELOCITY;
-
     this.qIndex++;
-    this.time.delayedCall(1500, () => this.spawnPlatforms());
+    this.time.delayedCall(1500, () => this.spawnQuestion());
   }
 
   clearPlatforms() {
@@ -341,20 +332,20 @@ export class Chapter3Scene extends Phaser.Scene {
   showEndScreen() {
     this.gameOver = true;
     this.answered = true;
+    this.dropping = false;
     const { width, height } = this.scale;
     const globalState = getState();
 
     this.questionText.setVisible(false);
     this.feedbackText.setVisible(false);
-
-    const camMid = this.cameras.main.scrollY + height / 2;
+    this.player.setVisible(false);
 
     this.add
-      .rectangle(width / 2, camMid, width, height, 0x000000, 0.75)
+      .rectangle(width / 2, height / 2, width, height, 0x000000, 0.75)
       .setDepth(30);
 
     this.add
-      .text(width / 2, camMid - 80, 'Chapter 3 Complete!', {
+      .text(width / 2, height / 2 - 80, 'Chapter 3 Complete!', {
         fontSize: '36px',
         color: '#59CD90',
         fontFamily: 'Arial',
@@ -364,7 +355,7 @@ export class Chapter3Scene extends Phaser.Scene {
       .setDepth(31);
 
     this.add
-      .text(width / 2, camMid - 20, `Chapter Score: ${this.localScore}`, {
+      .text(width / 2, height / 2 - 20, `Chapter Score: ${this.localScore}`, {
         fontSize: '22px',
         color: '#ffffff',
         fontFamily: 'Arial',
@@ -373,7 +364,7 @@ export class Chapter3Scene extends Phaser.Scene {
       .setDepth(31);
 
     this.add
-      .text(width / 2, camMid + 20, `Global Score: ${globalState.score}`, {
+      .text(width / 2, height / 2 + 20, `Global Score: ${globalState.score}`, {
         fontSize: '22px',
         color: '#FAC748',
         fontFamily: 'Arial',
@@ -382,7 +373,7 @@ export class Chapter3Scene extends Phaser.Scene {
       .setDepth(31);
 
     this.add
-      .text(width / 2, camMid + 70, 'Press ENTER for Chapter 4', {
+      .text(width / 2, height / 2 + 70, 'Press ENTER for Chapter 4', {
         fontSize: '18px',
         color: '#888',
         fontFamily: 'Arial',
